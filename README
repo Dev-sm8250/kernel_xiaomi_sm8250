@@ -1,19 +1,16 @@
-Linux kernel
-============
+ASUS ZenFone 7 Linux Kernel
+===========================
 
-There are several guides for kernel developers and users. These guides can
-be rendered in a number of formats, like HTML and PDF. Please read
-Documentation/admin-guide/README.rst first.
+Use `build_kernel.sh` to build.
 
-In order to build the documentation, use ``make htmldocs`` or
-``make pdfdocs``.  The formatted documentation can also be read online at:
+But first you'll need to download an appropriate toolchain and edit the paths in the following files:
+- build_kernel.sh
+- scripts/Makefile.lib at line 320
 
-    https://www.kernel.org/doc/html/latest/
+The script will produce files at ./out/arch/arm64/boot/
 
-There are various text files in the Documentation/ subdirectory,
-several of them using the Restructured Text markup notation.
-See Documentation/00-INDEX for a list of what is contained in each file.
+Rename `dtb.img` into just `dtb` and place it along with the `Image` into an AnyKernel3 .zip
 
-Please read the Documentation/process/changes.rst file, as it contains the
-requirements for building and running the kernel, and information about
-the problems which may result by upgrading your kernel.
+Thanks to:
+ - https://github.com/CaptainThrowback/android_kernel_asus_sm8250/tree/zf7_recovery
+ - https://github.com/omnirom/android_kernel_asus_sm8250/
