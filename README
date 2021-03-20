@@ -7,6 +7,13 @@ But first you'll need to download an appropriate toolchain and edit the paths in
 - build_kernel.sh
 - scripts/Makefile.lib at line 320
 
+The toolchain:
+ - https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/platform-tools-31.0.0/clang-r383902c.tar.gz
+ - https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/f95a7e464dcbf49032954036703e0fe35730d429.tar.gz
+ 
+Can you use vanilla aarch64 GCC? No.
+Is the Google toolchain boobytrapped? We don't know.
+
 The script will produce files at ./out/arch/arm64/boot/
 
 Rename `dtb.img` into just `dtb` and place it along with the `Image` into an AnyKernel3 .zip
