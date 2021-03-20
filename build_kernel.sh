@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Download the appropriate toolchain here:
+# clang-r383902c 				https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+/refs/tags/platform-tools-31.0.0									Click clang-r383902c -> Click [tgz]
+# aarch64-linux-android-4.9		https://android.googlesource.com/platform/prebuilts/gcc/darwin-x86/aarch64/aarch64-linux-android-4.9/+/refs/tags/platform-tools-31.0.0 		Click [tgz]
+
 defconfig_folder=arch/arm64/configs
 kernel_root=/mnt/e/Phone_Zf7Stuff/Kernel/StockKernel/kernel/msm-4.19
 clang_path=/mnt/e/Phone_Zf7Stuff/Kernel/clang-r383902c
