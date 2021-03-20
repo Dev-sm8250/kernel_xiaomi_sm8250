@@ -317,7 +317,7 @@ dtc-tmp = $(subst $(comma),_,$(dot-target).dts.tmp)
 # mkdtimg
 #----------------------------------------------------------------------------
 quiet_cmd_mkdtimg = DTBOIMG $@
-cmd_mkdtimg = mkdtimg create $@ $(filter-out FORCE,$^)
+cmd_mkdtimg = /mnt/e/Phone_Zf7Stuff/Kernel/StockKernel/kernel/msm-4.19/scripts/mkdtimg create $@ $(filter-out FORCE,$^)
 
 # cat
 # ---------------------------------------------------------------------------
