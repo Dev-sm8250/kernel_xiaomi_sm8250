@@ -938,6 +938,11 @@ include scripts/Makefile.kasan
 include scripts/Makefile.extrawarn
 include scripts/Makefile.ubsan
 
+# Set the -mcpu and -mtune optimizations
+# This older toolchain does not support anything newer than cortex-a75 / cortex-a55
+KBUILD_CFLAGS   += -mcpu=cortex-a55+crc+crypto
+KBUILD_CFLAGS   += -mtune=cortex-a55+crc+crypto
+
 # Add any arch overrides and user supplied CPPFLAGS, AFLAGS and CFLAGS as the
 # last assignments
 KBUILD_CPPFLAGS += $(ARCH_CPPFLAGS) $(KCPPFLAGS)
