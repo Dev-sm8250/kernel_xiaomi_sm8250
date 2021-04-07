@@ -3,6 +3,7 @@
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  */
 
+#include <linux/debugfs.h> // Hack
 #include <linux/cpufreq.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -29,6 +30,76 @@
 
 #define CYCLE_CNTR_OFFSET(c, m, acc_count)				\
 			(acc_count ? ((c - cpumask_first(m) + 1) * 4) : 0)
+			
+/* Hack */
+/* ============================================================================================================ */
+#define CPU_TABLE_BUF_SIZE 4096
+
+static char* cpu_table_buf;
+size_t cpu_table_buf_offset;
+
+static ssize_t cpu_table_get(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	if (IS_ERR(file) || file == NULL) {
+		pr_err("input error %ld\n", PTR_ERR(file));
+		return -EINVAL;
+	}
+
+	return simple_read_from_buffer(buf, count, ppos, (void*) cpu_table_buf, cpu_table_buf_offset);
+}
+
+static int cpu_table_open(struct inode *inode, struct file *file)
+{
+	if (IS_ERR(file) || file == NULL) {
+		pr_err("input error %ld\n", PTR_ERR(file));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static const struct file_operations cpu_table_ops = {
+	.read = cpu_table_get,
+	.open = cpu_table_open,
+	.write = NULL,
+};
+
+int debugfs_hack_init() {
+	struct dentry* dir;
+	
+	// Create a directory in /sys/kernel/debug/...
+	dir = debugfs_create_dir("qcom-cpufreq-hw-table-extraction", NULL);
+	
+	if (!dir) {
+		// Do not proceed any further if that failed
+		return -1;
+	}
+	
+	// Allocate some memory
+	cpu_table_buf = kzalloc(CPU_TABLE_BUF_SIZE, GFP_KERNEL);
+	
+	// Zeroize offset
+	cpu_table_buf_offset = 0;
+	
+	// Add a file
+	debugfs_create_file("table", 0444, dir, NULL, &cpu_table_ops);
+	
+	return 0;
+}
+
+void cpu_point_table_add(u32 freq, u32 volt, u32 core_count) {
+	int len;
+	
+	// Extra precautions
+	if (cpu_table_buf_offset >= CPU_TABLE_BUF_SIZE)
+		return;
+	
+	len = snprintf(cpu_table_buf + cpu_table_buf_offset, CPU_TABLE_BUF_SIZE - cpu_table_buf_offset, "Freq: %10lu, Volts: %10lu, Core count: %5lu\n", freq, volt, core_count);
+	
+	if (len > 0)
+		cpu_table_buf_offset += len;
+}
+/* ============================================================================================================ */
 
 enum {
 	CPUFREQ_HW_LOW_TEMP_LEVEL,
@@ -475,6 +546,8 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 
 		dev_dbg(dev, "index=%d freq=%d, core_count %d\n",
 			i, c->table[i].frequency, core_count);
+			
+		cpu_point_table_add(cur_freq, volt, core_count);
 
 		if (core_count != c->max_cores) {
 			if (core_count == (c->max_cores - 1)) {
@@ -823,6 +896,9 @@ static int qcom_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		.get_cpu_cycle_counter = qcom_cpufreq_get_cpu_cycle_counter,
 	};
 	int rc, cpu;
+	
+	// Init the hack
+	debugfs_hack_init();
 
 	/* Get the bases of cpufreq for domains */
 	rc = qcom_resources_init(pdev);
