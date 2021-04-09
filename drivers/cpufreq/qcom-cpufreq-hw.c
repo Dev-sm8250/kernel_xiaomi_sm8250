@@ -87,14 +87,40 @@ int debugfs_hack_init() {
 	return 0;
 }
 
-void cpu_point_table_add(u32 freq, u32 volt, u32 core_count) {
+void cpu_point_table_add(u32 freq, u32 volt, int lval) {
 	int len;
 	
 	// Extra precautions
 	if (cpu_table_buf_offset >= CPU_TABLE_BUF_SIZE)
 		return;
 	
-	len = snprintf(cpu_table_buf + cpu_table_buf_offset, CPU_TABLE_BUF_SIZE - cpu_table_buf_offset, "Freq: %10lu, Volts: %10lu, Core count: %5lu\n", freq, volt, core_count);
+	len = snprintf(cpu_table_buf + cpu_table_buf_offset, CPU_TABLE_BUF_SIZE - cpu_table_buf_offset, "Freq: %10lu, Volts: %10lu, Lval: %5d\n", freq, volt, lval);
+	
+	if (len > 0)
+		cpu_table_buf_offset += len;
+}
+
+void cpu_table_insert_string(char* str) {
+	int len;
+	
+	// Extra precautions
+	if (cpu_table_buf_offset >= CPU_TABLE_BUF_SIZE)
+		return;
+	
+	len = snprintf(cpu_table_buf + cpu_table_buf_offset, CPU_TABLE_BUF_SIZE - cpu_table_buf_offset, "%s", str);
+	
+	if (len > 0)
+		cpu_table_buf_offset += len;
+}
+
+void cpu_table_insert_hex(u32 freq_data, u32 volt_data) {
+	int len;
+	
+	// Extra precautions
+	if (cpu_table_buf_offset >= CPU_TABLE_BUF_SIZE)
+		return;
+	
+	len = snprintf(cpu_table_buf + cpu_table_buf_offset, CPU_TABLE_BUF_SIZE - cpu_table_buf_offset, "Freq: 0x%8x, Volts: 0x%8x\n", freq_data, volt_data);
 	
 	if (len > 0)
 		cpu_table_buf_offset += len;
@@ -514,7 +540,7 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 {
 	struct device *dev = &pdev->dev, *cpu_dev;
 	void __iomem *base_freq, *base_volt;
-	u32 data, src, lval, i, core_count, prev_cc, prev_freq, cur_freq, volt;
+	u32 freq_data, volt_data, src, lval, i, core_count, prev_cc, prev_freq, cur_freq, volt;
 	u32 vc;
 	unsigned long cpu;
 
@@ -528,27 +554,33 @@ static int qcom_cpufreq_hw_read_lut(struct platform_device *pdev,
 	base_volt = c->reg_bases[REG_VOLT_LUT_TABLE];
 
 	for (i = 0; i < lut_max_entries; i++) {
-		data = readl_relaxed(base_freq + i * lut_row_size);
-		src = (data & GENMASK(31, 30)) >> 30;
-		lval = data & GENMASK(7, 0);
-		core_count = CORE_COUNT_VAL(data);
+		freq_data = readl_relaxed(base_freq + i * lut_row_size);
+		src = (freq_data & GENMASK(31, 30)) >> 30;
+		lval = freq_data & GENMASK(7, 0);
+		core_count = CORE_COUNT_VAL(freq_data);
 
-		data = readl_relaxed(base_volt + i * lut_row_size);
-		volt = (data & GENMASK(11, 0)) * 1000;
-		vc = data & GENMASK(21, 16);
+		volt_data = readl_relaxed(base_volt + i * lut_row_size);
+		volt = (volt_data & GENMASK(11, 0)) * 1000;
+		vc = 	volt_data & GENMASK(21, 16);
+
 
 		if (src)
-			c->table[i].frequency = c->xo_rate * lval / 1000;
+			cur_freq = c->xo_rate * lval / 1000;
 		else
-			c->table[i].frequency = c->cpu_hw_rate / 1000;
-
-		cur_freq = c->table[i].frequency;
+			cur_freq = c->cpu_hw_rate / 1000;
+		
+		if (src) {
+			cpu_point_table_add(cur_freq, volt, lval);
+		} else {
+			cpu_point_table_add(cur_freq, volt, -1);
+		}
+		
+		c->table[i].frequency = cur_freq;
 
 		dev_dbg(dev, "index=%d freq=%d, core_count %d\n",
 			i, c->table[i].frequency, core_count);
 			
-		cpu_point_table_add(cur_freq, volt, core_count);
-
+			
 		if (core_count != c->max_cores) {
 			if (core_count == (c->max_cores - 1)) {
 				c->skip_data.skip = true;
