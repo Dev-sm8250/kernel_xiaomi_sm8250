@@ -139,28 +139,6 @@ preserve_boot_args:
 	adr_l	x0, boot_args			// record the contents of
 	stp	x21, x1, [x0]			// x0 .. x3 at kernel entry
 	stp	x2, x3, [x0, #16]
-	
-	// Hackery
-	// Assembly generated from the following C code:
-	// 
-	// ```
-	// // 0x18593000 Taken from kona.dtsi
-	// // The added offset is cpufreq_qcom_epss_std_offsets[REG_FREQ_LUT_TABLE], originally found in qcom-cpufreq-hw.c
-	// unsigned int * ddd = (unsigned int *) (0x18593000 + 0x100);
-	// 
-	// // Write 19th and 20th entry only
-	// ddd[19] = 0x4004009D;
-	// ddd[20] = 0x4004009D;
-	// ```
-	//
-	mov     x3, 12620
-	mov     x2, 12624
-	movk    x3, 0x1859, lsl 16
-	movk    x2, 0x1859, lsl 16
-	mov     w1, 157 // Lval multiplier
-	movk    w1, 0x4004, lsl 16
-	str     w1, [x3]
-	str     w1, [x2]
 
 	dmb	sy				// needed before dc ivac with
 						// MMU off
