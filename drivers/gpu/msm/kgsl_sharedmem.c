@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2002,2007-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2002,2007-2021, The Linux Foundation. All rights reserved.
  */
 
 #include <asm/cacheflush.h>
@@ -295,9 +295,9 @@ void kgsl_process_init_sysfs(struct kgsl_device *device,
 	kgsl_process_private_get(private);
 
 	if (kobject_init_and_add(&private->kobj, &ktype_mem_entry,
-		kgsl_driver.prockobj, "%d", private->pid)) {
+		kgsl_driver.prockobj, "%d", pid_nr(private->pid))) {
 		dev_err(device->dev, "Unable to add sysfs for process %d\n",
-			private->pid);
+			pid_nr(private->pid));
 		return;
 	}
 
@@ -312,7 +312,7 @@ void kgsl_process_init_sysfs(struct kgsl_device *device,
 		if (ret)
 			dev_err(device->dev,
 				"Unable to create sysfs files for process %d\n",
-				private->pid);
+				pid_nr(private->pid));
 	}
 
 	for (i = 0; i < ARRAY_SIZE(debug_memstats); i++) {
@@ -468,8 +468,6 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 
 		get_page(page);
 		vmf->page = page;
-
-		atomic_long_add(PAGE_SIZE, &memdesc->mapsize);
 
 		return 0;
 	}
@@ -650,8 +648,6 @@ static int kgsl_contiguous_vmfault(struct kgsl_memdesc *memdesc,
 		return VM_FAULT_OOM;
 	else if (ret == -EFAULT)
 		return VM_FAULT_SIGBUS;
-
-	atomic_long_add(PAGE_SIZE, &memdesc->mapsize);
 
 	return VM_FAULT_NOPAGE;
 }
@@ -878,6 +874,7 @@ void kgsl_memdesc_init(struct kgsl_device *device,
 		(memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT,
 		ilog2(PAGE_SIZE));
 	kgsl_memdesc_set_align(memdesc, align);
+	spin_lock_init(&memdesc->lock);
 }
 
 int
@@ -889,6 +886,7 @@ kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
 	unsigned int pcount = 0;
 	size_t len;
 	unsigned int align;
+	bool memwq_flush_done = false;
 
 	static DEFINE_RATELIMIT_STATE(_rs,
 					DEFAULT_RATELIMIT_INTERVAL,
@@ -963,6 +961,13 @@ kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
 		if (page_count <= 0) {
 			if (page_count == -EAGAIN)
 				continue;
+
+			/* if OoM, retry once after flushing mem_wq */
+			if (page_count == -ENOMEM && !memwq_flush_done) {
+				flush_workqueue(kgsl_driver.mem_workqueue);
+				memwq_flush_done = true;
+				continue;
+			}
 
 			/*
 			 * Update sglen and memdesc size,as requested allocation
