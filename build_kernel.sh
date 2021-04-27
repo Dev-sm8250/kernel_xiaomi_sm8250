@@ -54,7 +54,7 @@ echo
 echo "Build The Good Stuff"
 echo 
 
-time make CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip O=out -j$(($(nproc) * 2))
+time make CC=clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip O=out -j$(nproc)
 
 if [ -e $kernel_output_path/Image ]; then
 	echo
